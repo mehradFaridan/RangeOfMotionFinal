@@ -8,18 +8,106 @@
 import SwiftUI
 import RealityKit
 import RealityKitContent
+import ARKit
+import Combine
 
 struct ImmersiveView: View {
+    
+    @EnvironmentObject var dataModel: DataModel  // Access shared DataModel
+    @State private var latestYPos: Float = 0.0
+    @State private var timerCancellable: AnyCancellable?
+    
+    
+    let handTracking = HandTrackingProvider()
+    let session = ARKitSession()
+    @State var box = ModelEntity()
+    @State var sphere = ModelEntity()
 
     var body: some View {
         RealityView { content in
             // Add the initial RealityKit content
-            if let immersiveContentEntity = try? await Entity(named: "Immersive", in: realityKitContentBundle) {
-                content.add(immersiveContentEntity)
+            let material = SimpleMaterial(color: .red, isMetallic: false)
+            self.sphere = ModelEntity(mesh: .generateSphere(radius: 0.05), materials: [material])
+            self.box = ModelEntity(mesh: .generateBox(size: 0.05), materials: [material])
 
-                // Put skybox here.  See example in World project available at
-                // https://developer.apple.com/
+            content.add(box)
+            content.add(sphere)
+        } update: { content in
+            Task {
+                for await anchorUpdate in handTracking.anchorUpdates {
+                    let anchor = anchorUpdate.anchor
+                    switch anchor.chirality {
+                    case .left:
+                        if let handSkeleton = anchor.handSkeleton {
+                            let palm = handSkeleton.joint(.middleFingerKnuckle)
+                            let originFromWrist = anchor.originFromAnchorTransform
+                            let wristFromPalm = palm.anchorFromJointTransform
+                            let originFromTip = originFromWrist * wristFromPalm
+                            sphere.setTransformMatrix(originFromTip, relativeTo: nil)
+                        }
+                    case .right:
+                        if let handSkeleton = anchor.handSkeleton {
+                            let palm = handSkeleton.joint(.middleFingerKnuckle)
+                            let originFromWrist = anchor.originFromAnchorTransform
+                            let wristFromPalm = palm.anchorFromJointTransform
+                            let originFromTip = originFromWrist * wristFromPalm
+                            box.setTransformMatrix(originFromTip, relativeTo: nil)
+                            
+//                            // Get the Y position and update DataModel
+//                            let yPos = originFromTip.columns.3.y
+//                            print("Right Hand Y Pos: ", yPos)
+//                            dataModel.updateValue(newValue: yPos)
+//                            
+//                            DispatchQueue.main.async{
+//                                
+//                                dataModel.updateValue(newValue: yPos)
+//                                
+//                            }
+                            
+                            // Update the latest Y position
+                            let yPos = Float(originFromTip.columns.3.y)
+                            print("Right Hand Y Pos: ", yPos)
+                            self.latestYPos = yPos
+                            
+                        }
+                    @unknown default:
+                        print("Unknown error")
+                    }
+                }
             }
+        }
+        
+        .task {
+            await runHandTrackingSession()
+        }
+        
+        .onAppear{
+            
+            timerCancellable = Timer.publish(every: 0.1, on: .main, in: .common)
+                .autoconnect()
+                .sink{ _ in
+                    
+                    dataModel.updateValue(newValue: latestYPos)
+                    
+                }
+        }
+        .onDisappear{
+            
+            timerCancellable?.cancel()
+            
+        }
+    }
+
+    func runHandTrackingSession() async {
+        do {
+            if HandTrackingProvider.isSupported {
+                try await session.run([handTracking])
+                print("Hand tracking initializing in progress.")
+            } else {
+                print("Hand tracking is not supported.")
+            }
+        } catch {
+            print("Error during initialization of hand tracking: \(error)")
         }
     }
 }
@@ -27,4 +115,5 @@ struct ImmersiveView: View {
 #Preview(immersionStyle: .mixed) {
     ImmersiveView()
         .environment(AppModel())
+        .environmentObject(DataModel())  // Provide DataModel for preview
 }

@@ -10,16 +10,20 @@ import SwiftUI
 @main
 struct RangeOfMotionFinalApp: App {
 
+    @StateObject var dataModel = DataModel()
+    
     @State private var appModel = AppModel()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environment(appModel)
+                .environmentObject(dataModel)
         }
 
         ImmersiveSpace(id: appModel.immersiveSpaceID) {
             ImmersiveView()
+                .environmentObject(dataModel)
                 .environment(appModel)
                 .onAppear {
                     appModel.immersiveSpaceState = .open
