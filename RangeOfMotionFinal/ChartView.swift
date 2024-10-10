@@ -60,23 +60,20 @@ class DataModel: ObservableObject {
     }
 }
 
-
 struct LineChartView: View {
     @EnvironmentObject var dataModel: DataModel
+    var minY: Float?
+    var maxY: Float?
 
     var body: some View {
         Chart {
             ForEach(Array(dataModel.dataPoints.enumerated()), id: \.offset) { index, value in
+                let clampedValue = clampValue(value)
                 LineMark(
                     x: .value("Time", Double(index) * 0.1),
-                    y: .value("Y Position", value)
+                    y: .value("Y Position", clampedValue)
                 )
                 .interpolationMethod(.linear)
-                
-                PointMark(
-                    x: .value("Time", Double(index) * 0.1),
-                    y: .value("Y Position", value)
-                )
             }
         }
         .chartXAxis {
@@ -85,16 +82,59 @@ struct LineChartView: View {
                 AxisTick()
                 AxisValueLabel {
                     let timeValue = value.as(Double.self) ?? 0.0
-                    Text(String(format: "%.0f", timeValue))
+                    Text(String(format: "%.0f s", timeValue))
                 }
             }
         }
         .chartYAxis {
             AxisMarks()
         }
+        .conditionalChartYScale(domain: yAxisDomain())
         .padding()
-        .frame(width: 400, height: 400)
+        .frame(maxWidth: .infinity)
         .animation(nil, value: dataModel.dataPoints)
+    }
+
+    private func yAxisDomain() -> ClosedRange<Double>? {
+        // If both minY and maxY are nil, return nil to use default scaling
+        guard minY != nil || maxY != nil else { return nil }
+
+        let dataMin = dataModel.dataPoints.min() ?? 0
+        let dataMax = dataModel.dataPoints.max() ?? 1
+
+        let minValue = Double(minY ?? dataMin)
+        let maxValue = Double(maxY ?? dataMax)
+
+        // Ensure minValue and maxValue are not equal
+        if minValue == maxValue {
+            let adjustment = 0.1
+            return (minValue - adjustment)...(maxValue + adjustment)
+        } else {
+            return minValue...maxValue
+        }
+    }
+    
+    private func clampValue(_ value: Float) -> Float {
+        var clampedValue = value
+        if let minY = minY, clampedValue < minY {
+            clampedValue = minY
+        }
+        if let maxY = maxY, clampedValue > maxY {
+            clampedValue = maxY
+        }
+        return clampedValue
+    }
+    
+}
+
+extension View {
+    @ViewBuilder
+    func conditionalChartYScale(domain: ClosedRange<Double>?) -> some View {
+        if let domain = domain {
+            self.chartYScale(domain: domain)
+        } else {
+            self
+        }
     }
 }
 

@@ -30,8 +30,8 @@ struct ImmersiveView: View {
             self.sphere = ModelEntity(mesh: .generateSphere(radius: 0.05), materials: [material])
             self.box = ModelEntity(mesh: .generateBox(size: 0.05), materials: [material])
 
-            content.add(box)
-            content.add(sphere)
+            //content.add(box)
+            //content.add(sphere)
         } update: { content in
             Task {
                 for await anchorUpdate in handTracking.anchorUpdates {
@@ -44,6 +44,12 @@ struct ImmersiveView: View {
                             let wristFromPalm = palm.anchorFromJointTransform
                             let originFromTip = originFromWrist * wristFromPalm
                             sphere.setTransformMatrix(originFromTip, relativeTo: nil)
+                        
+                            // Update the latest Y position
+                            let yPos = Float(originFromTip.columns.3.y)
+                            print("Right Hand Y Pos: ", yPos)
+                            self.latestYPos = yPos
+                            
                         }
                     case .right:
                         if let handSkeleton = anchor.handSkeleton {
@@ -64,10 +70,10 @@ struct ImmersiveView: View {
 //                                
 //                            }
                             
-                            // Update the latest Y position
-                            let yPos = Float(originFromTip.columns.3.y)
-                            print("Right Hand Y Pos: ", yPos)
-                            self.latestYPos = yPos
+//                            // Update the latest Y position
+//                            let yPos = Float(originFromTip.columns.3.y)
+//                            print("Right Hand Y Pos: ", yPos)
+//                            self.latestYPos = yPos
                             
                         }
                     @unknown default:

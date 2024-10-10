@@ -15,28 +15,43 @@ struct ContentView: View {
 
     @EnvironmentObject var dataModel: DataModel
     
-    //@State var counter1 = 0
-    
+    @State private var minY: Float?
+    @State private var maxY: Float?
+        
     var body: some View {
-        VStack {
+        VStack(spacing: 20) {
 
             //Text("Start Tracking your Hand")
             
             Text("Current Value: \(dataModel.dataValue)")
             
-            LineChartView().frame(width: 1000, height: 400)
+            LineChartView(minY: minY, maxY: maxY)
+                .frame(maxWidth: .infinity, maxHeight: 400)
+                .padding(.horizontal)
             
             ToggleImmersiveSpaceButton()
-            
-//            Button("Update Value"){
-//                
-//            dataModel.updateValue(newValue: 0)
-//            
-//            counter1 += 1
-//                
-//            }
+                        
+            HStack(spacing: 20) {
+                Button(action: {
+                    minY = dataModel.dataValue
+                    print("Set Min Y to \(minY!)")
+                }) {
+                    Text("Set Min Y")
+                }
+                //.buttonStyle(CustomButtonStyle())
+
+                Button(action: {
+                    maxY = dataModel.dataValue
+                    print("Set Max Y to \(maxY!)")
+                }) {
+                    Text("Set Max Y")
+                }
+                //.buttonStyle(CustomButtonStyle())
+            }
+            .frame(height: 50)
         }
         .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
