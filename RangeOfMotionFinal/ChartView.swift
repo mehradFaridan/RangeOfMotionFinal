@@ -41,7 +41,6 @@ struct RingBuffer<T> {
     }
 }
 
-
 class DataModel: ObservableObject {
     @Published private var ringBuffer = RingBuffer<Float>(size: 100)  // Adjust size as needed
 

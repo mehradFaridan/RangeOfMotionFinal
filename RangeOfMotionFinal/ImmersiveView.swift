@@ -16,7 +16,8 @@ struct ImmersiveView: View {
     @EnvironmentObject var dataModel: DataModel  // Access shared DataModel
     @State private var latestYPos: Float = 0.0
     @State private var timerCancellable: AnyCancellable?
-    
+    private var attachmentModel = AttachmentModel()
+
     
     let handTracking = HandTrackingProvider()
     let session = ARKitSession()
@@ -24,7 +25,7 @@ struct ImmersiveView: View {
     @State var sphere = ModelEntity()
 
     var body: some View {
-        RealityView { content in
+        RealityView { content, attachment in
             // Add the initial RealityKit content
             let material = SimpleMaterial(color: .red, isMetallic: false)
             self.sphere = ModelEntity(mesh: .generateSphere(radius: 0.05), materials: [material])
@@ -32,7 +33,19 @@ struct ImmersiveView: View {
 
             //content.add(box)
             //content.add(sphere)
-        } update: { content in
+            if let attachment = attachment.entity(for: "Set Max") {
+                attachment.position = [0.5,1,0]
+                content.add(attachment)
+            }
+            if let attachment = attachment.entity(for: "m") {
+                attachment.position = [0,1,0]
+                content.add(attachment)
+            }
+            if let attachment = attachment.entity(for: "Set Min") {
+                attachment.position = [0.8,1,0]
+                content.add(attachment)
+            }
+        } update: { content, attachment in
             Task {
                 for await anchorUpdate in handTracking.anchorUpdates {
                     let anchor = anchorUpdate.anchor
@@ -49,7 +62,8 @@ struct ImmersiveView: View {
                             let yPos = Float(originFromTip.columns.3.y)
                             print("Right Hand Y Pos: ", yPos)
                             self.latestYPos = yPos
-                            
+
+
                         }
                     case .right:
                         if let handSkeleton = anchor.handSkeleton {
@@ -81,26 +95,45 @@ struct ImmersiveView: View {
                     }
                 }
             }
+        } attachments: {
+            ForEach(attachmentModel.handButtonArray) { handButton in
+                Attachment(id: handButton.title, {
+                    Button {
+                        //
+                    } label: {
+                        Text(handButton.title)
+                        Image(systemName: handButton.image ?? "")
+                    }
+                    .tint(handButton.color)
+
+                })
+            }
+
+            Attachment(id: "m") {
+                Button {
+                    //
+                } label: {
+                    Text("klejwjkl")
+                        .font(.extraLargeTitle)
+                }
+                .tint(.green)
+
+
+            }
         }
-        
+
         .task {
             await runHandTrackingSession()
         }
-        
         .onAppear{
-            
             timerCancellable = Timer.publish(every: 0.1, on: .main, in: .common)
                 .autoconnect()
                 .sink{ _ in
-                    
                     dataModel.updateValue(newValue: latestYPos)
-                    
                 }
         }
         .onDisappear{
-            
             timerCancellable?.cancel()
-            
         }
     }
 

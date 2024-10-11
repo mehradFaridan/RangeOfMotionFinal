@@ -9,9 +9,7 @@ import SwiftUI
 
 @main
 struct RangeOfMotionFinalApp: App {
-
     @StateObject var dataModel = DataModel()
-    
     @State private var appModel = AppModel()
 
     var body: some Scene {
