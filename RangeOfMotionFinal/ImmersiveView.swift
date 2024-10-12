@@ -18,7 +18,7 @@ struct ImmersiveView: View {
     @State private var timerCancellable: AnyCancellable?
     private var attachmentModel = AttachmentModel()
 
-    
+
     let handTracking = HandTrackingProvider()
     let session = ARKitSession()
     @State var box = ModelEntity()
@@ -26,23 +26,12 @@ struct ImmersiveView: View {
 
     var body: some View {
         RealityView { content, attachment in
-            // Add the initial RealityKit content
-            let material = SimpleMaterial(color: .red, isMetallic: false)
-            self.sphere = ModelEntity(mesh: .generateSphere(radius: 0.05), materials: [material])
-            self.box = ModelEntity(mesh: .generateBox(size: 0.05), materials: [material])
 
-            //content.add(box)
-            //content.add(sphere)
+
             if let attachment = attachment.entity(for: "Set Max") {
-                attachment.position = [0.5,1,0]
-                content.add(attachment)
-            }
-            if let attachment = attachment.entity(for: "m") {
-                attachment.position = [0,1,0]
                 content.add(attachment)
             }
             if let attachment = attachment.entity(for: "Set Min") {
-                attachment.position = [0.8,1,0]
                 content.add(attachment)
             }
         } update: { content, attachment in
@@ -51,44 +40,27 @@ struct ImmersiveView: View {
                     let anchor = anchorUpdate.anchor
                     switch anchor.chirality {
                     case .left:
-                        if let handSkeleton = anchor.handSkeleton {
-                            let palm = handSkeleton.joint(.middleFingerKnuckle)
-                            let originFromWrist = anchor.originFromAnchorTransform
-                            let wristFromPalm = palm.anchorFromJointTransform
-                            let originFromTip = originFromWrist * wristFromPalm
-                            sphere.setTransformMatrix(originFromTip, relativeTo: nil)
-                        
-                            // Update the latest Y position
-                            let yPos = Float(originFromTip.columns.3.y)
-                            print("Right Hand Y Pos: ", yPos)
-                            self.latestYPos = yPos
 
 
+                        let foreArmWorldPos1 = attachButtonToHand(anchor: anchor, xOffset: 0.05)
+                        let foreArmWorldPos2 = attachButtonToHand(anchor: anchor, xOffset: 0.1)
+
+                        //FIXME: FIX how this is handled. approperitaly handle a nil value
+                        let yPos = Float(foreArmWorldPos1?.columns.3.y ?? 6)
+
+                        self.latestYPos = yPos
+
+                        if let attachment = attachment.entity(for: "Set Max") {
+                            attachment.setTransformMatrix(foreArmWorldPos1!, relativeTo: nil)
                         }
+                        if let attachment = attachment.entity(for: "Set Min") {
+                            attachment.setTransformMatrix(foreArmWorldPos2!, relativeTo: nil)
+                        }
+
+
                     case .right:
                         if let handSkeleton = anchor.handSkeleton {
-                            let palm = handSkeleton.joint(.middleFingerKnuckle)
-                            let originFromWrist = anchor.originFromAnchorTransform
-                            let wristFromPalm = palm.anchorFromJointTransform
-                            let originFromTip = originFromWrist * wristFromPalm
-                            box.setTransformMatrix(originFromTip, relativeTo: nil)
-                            
-//                            // Get the Y position and update DataModel
-//                            let yPos = originFromTip.columns.3.y
-//                            print("Right Hand Y Pos: ", yPos)
-//                            dataModel.updateValue(newValue: yPos)
-//                            
-//                            DispatchQueue.main.async{
-//                                
-//                                dataModel.updateValue(newValue: yPos)
-//                                
-//                            }
-                            
-//                            // Update the latest Y position
-//                            let yPos = Float(originFromTip.columns.3.y)
-//                            print("Right Hand Y Pos: ", yPos)
-//                            self.latestYPos = yPos
-                            
+                            // do something
                         }
                     @unknown default:
                         print("Unknown error")
@@ -99,7 +71,13 @@ struct ImmersiveView: View {
             ForEach(attachmentModel.handButtonArray) { handButton in
                 Attachment(id: handButton.title, {
                     Button {
-                        //
+                        if handButton.title == "Set Min" {
+                            dataModel.minY = dataModel.dataValue
+                            print("Set Min Y to \(dataModel.minY!)")
+                        } else if handButton.title == "Set Max" {
+                            dataModel.maxY = dataModel.dataValue
+                            print("Set Max Y to \(dataModel.maxY!)")
+                        }
                     } label: {
                         Text(handButton.title)
                         Image(systemName: handButton.image ?? "")
@@ -107,18 +85,6 @@ struct ImmersiveView: View {
                     .tint(handButton.color)
 
                 })
-            }
-
-            Attachment(id: "m") {
-                Button {
-                    //
-                } label: {
-                    Text("klejwjkl")
-                        .font(.extraLargeTitle)
-                }
-                .tint(.green)
-
-
             }
         }
 
@@ -149,6 +115,42 @@ struct ImmersiveView: View {
             print("Error during initialization of hand tracking: \(error)")
         }
     }
+
+
+    func convertToWorldPosition(anchor: HandAnchor, joint: HandSkeleton.JointName) -> float4x4? {
+        guard let handSkeleton = anchor.handSkeleton else { return nil }
+        let joint = handSkeleton.joint(joint)
+
+        // get pos of palm relative to origin
+        let originFromWrist = anchor.originFromAnchorTransform
+        let wristFromPalm = joint.anchorFromJointTransform
+        let originFromTip = originFromWrist * wristFromPalm
+
+        return originFromTip
+
+    }
+
+    func attachButtonToHand(anchor: HandAnchor, xOffset: Float) -> float4x4? {
+        let foreArmWorldPos = convertToWorldPosition(anchor: anchor, joint: .forearmWrist)
+
+        let offset: Float = xOffset
+        var adjustedTransform = foreArmWorldPos
+        adjustedTransform?.columns.3.z += offset
+        adjustedTransform?.columns.3.x += 0.15
+
+        // Create a rotation matrix for 45 degrees around the Y-axis
+        let angleInRadians: Float = (.pi) / 2  // 45 degrees in radians
+        let rotationY = simd_float4x4(simd_quatf(angle: angleInRadians, axis: [0, 1, 0])) // Rotation around Y-axis
+
+        let angleInRadiansX: Float = -(.pi) / 2
+        let rotationX = simd_float4x4(simd_quatf(angle: angleInRadiansX, axis: [1, 0, 0])) // Rotation around X-axis
+
+        let intermediateTransform = matrix_multiply(adjustedTransform!, rotationY) // Apply Y-axis rotation first
+        let finalTransform = matrix_multiply(intermediateTransform, rotationX)    // Apply X-axis rotation second
+
+        return finalTransform
+    }
+
 }
 
 #Preview(immersionStyle: .mixed) {

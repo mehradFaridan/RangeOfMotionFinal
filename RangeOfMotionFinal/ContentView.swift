@@ -25,7 +25,7 @@ struct ContentView: View {
             
             Text("Current Value: \(dataModel.dataValue)")
             
-            LineChartView(minY: minY, maxY: maxY)
+            LineChartView(minY: dataModel.minY, maxY: dataModel.maxY)
                 .frame(maxWidth: .infinity, maxHeight: 400)
                 .padding(.horizontal)
             
