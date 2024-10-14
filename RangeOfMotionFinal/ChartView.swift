@@ -67,6 +67,8 @@ class DataModel: ObservableObject {
     func updateValue(newValue: Float) {
         DispatchQueue.main.async {
             self.ringBuffer.write(newValue)
+            self.determineRepState() // Check rep state after each new Y value
+            print(self.repCount)
         }
     }
 
@@ -78,22 +80,38 @@ class DataModel: ObservableObject {
             let point1 = self.dataValue
             let movementDifference = abs(point1 - self.lastYPos)
 
-            if movementDifference > movementThreshold {
-                if point1 > self.lastYPos {
-                    self.repState = .Upward
-                    print("Moving Upward")
-                } else if point1 < self.lastYPos {
-                    self.repState = .Downward
-                    print("Moving Downward")
-                } else {
-                    self.repState = .Idle
-                    print("Idle State")
-                }
-                // Update lastYPosition only when movement is substantial
-                self.lastYPos = point1
+            guard movementDifference > movementThreshold else {
+                return
+            }
+            guard let minY = self.minY, let maxY = self.maxY else {
+                return print("MinY or MaxY nil")
             }
 
+            if point1 > self.lastYPos {
+                if point1 >= (maxY - 0.02) && self.repState == .Downward {
+                    // Full upward motion completed
+                    self.repCount += 1
+                    print("Full rep completed!")
+                    self.repState = .Idle
+                } else {
+                    self.repState = .Upward
+                    print("Moving Upward")
+                }
+            } else if point1 < self.lastYPos {
+                if point1 <= (minY + 0.02) {
+                    // Downward motion started
+                    self.repState = .Downward
+                    print("Moving Downward")
+                }
+            }
+            // Update lastYPosition only when movement is substantial
+            self.lastYPos = point1
+
             // TODO: Implement Edge cases. What if user stops mid rep??
+            if self.repState != .Idle && movementDifference <= movementThreshold {
+                print("Movement stopped mid-rep")
+                self.repState = .Idle
+            }
         }
     }
 }
@@ -151,7 +169,7 @@ struct LineChartView: View {
             return minValue...maxValue
         }
     }
-    
+
     private func clampValue(_ value: Float) -> Float {
         var clampedValue = value
         if let minY = minY, clampedValue < minY {
@@ -162,7 +180,7 @@ struct LineChartView: View {
         }
         return clampedValue
     }
-    
+
 }
 
 extension View {
