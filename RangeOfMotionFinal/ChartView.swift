@@ -46,6 +46,7 @@ class DataModel: ObservableObject {
 
     @Published var minY: Float? = nil
     @Published var maxY: Float? = nil
+    @Published var repCount = 0
 
     var dataPoints: [Float] {
         return ringBuffer.toArray()

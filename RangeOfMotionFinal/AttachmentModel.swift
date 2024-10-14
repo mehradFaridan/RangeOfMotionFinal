@@ -16,9 +16,9 @@ struct HandButtons: Identifiable {
 class AttachmentModel {
 
     var handButtonArray = [
-        HandButtons(title: "Set Max", color: .gray, image: "bird"),
-        HandButtons(title: "Set Min", color: .gray, image: "bird"),
-        HandButtons(title: "Remove All", color: .brown, image: "bird")
+        HandButtons(title: "Set Max", color: .blue, image: nil),
+        HandButtons(title: "Set Min", color: .blue, image: nil),
+        HandButtons(title: "Remove All", color: .brown, image: nil)
     ]
 
 }
