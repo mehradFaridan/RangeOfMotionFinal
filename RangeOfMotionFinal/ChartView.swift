@@ -41,12 +41,20 @@ struct RingBuffer<T> {
     }
 }
 
+enum RepState {
+    case Downward
+    case Upward
+    case Idle
+}
+
 class DataModel: ObservableObject {
     @Published private var ringBuffer = RingBuffer<Float>(size: 100)  // Adjust size as needed
 
     @Published var minY: Float? = nil
     @Published var maxY: Float? = nil
     @Published var repCount = 0
+    @Published var repState: RepState = .Idle
+    @Published var lastYPos: Float = 0.0
 
     var dataPoints: [Float] {
         return ringBuffer.toArray()
@@ -59,6 +67,33 @@ class DataModel: ObservableObject {
     func updateValue(newValue: Float) {
         DispatchQueue.main.async {
             self.ringBuffer.write(newValue)
+        }
+    }
+
+    func determineRepState() {
+
+        let movementThreshold: Float = 0.05
+
+        let timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+            let point1 = self.dataValue
+            let movementDifference = abs(point1 - self.lastYPos)
+
+            if movementDifference > movementThreshold {
+                if point1 > self.lastYPos {
+                    self.repState = .Upward
+                    print("Moving Upward")
+                } else if point1 < self.lastYPos {
+                    self.repState = .Downward
+                    print("Moving Downward")
+                } else {
+                    self.repState = .Idle
+                    print("Idle State")
+                }
+                // Update lastYPosition only when movement is substantial
+                self.lastYPos = point1
+            }
+
+            // TODO: Implement Edge cases. What if user stops mid rep??
         }
     }
 }
