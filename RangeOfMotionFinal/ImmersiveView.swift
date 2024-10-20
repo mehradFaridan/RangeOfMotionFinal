@@ -13,21 +13,18 @@ import Combine
 
 struct ImmersiveView: View {
 
-    @EnvironmentObject var dataModel: DataModel  // Access shared DataModel
+    @EnvironmentObject var dataModel: DataModel
     @State private var latestYPos: Float = 0.0
     @State private var timerCancellable: AnyCancellable?
-    private var attachmentModel = AttachmentModel()
-    private let worldTrackingProvider = WorldTrackingProvider()
-
-
-    let handTracking = HandTrackingProvider()
-    let session = ARKitSession()
     @State var box = ModelEntity()
     @State var sphere = ModelEntity()
+    private var attachmentModel = AttachmentModel()
+    private let worldTrackingProvider = WorldTrackingProvider()
+    private let handTracking = HandTrackingProvider()
+    private let session = ARKitSession()
 
     var body: some View {
         RealityView { content, attachment in
-
 
             if let attachment = attachment.entity(for: "Set Max") {
                 content.add(attachment)
@@ -46,15 +43,9 @@ struct ImmersiveView: View {
                     switch anchor.chirality {
                     case .left:
 
-                        
-
-                    let foreArmWorldPos1 = attachButtonToHand(anchor: anchor, xOffset: 0.13, yOffset: 0, zOffset: 0.1)
-                    let foreArmWorldPos2 = attachButtonToHand(anchor: anchor, xOffset: 0.13, yOffset: 0, zOffset: 0.03)
-                    let foreArmWorldPos3 = attachButtonToHand(anchor: anchor, xOffset: 0.1, yOffset: 0, zOffset: -0.5)
-
-
-
-
+                        let foreArmWorldPos1 = attachButtonToHand(anchor: anchor, xOffset: 0.13, yOffset: 0, zOffset: 0.1)
+                        let foreArmWorldPos2 = attachButtonToHand(anchor: anchor, xOffset: 0.13, yOffset: 0, zOffset: 0.03)
+                        let foreArmWorldPos3 = attachButtonToHand(anchor: anchor, xOffset: 0.1, yOffset: 0, zOffset: -0.5)
                         // Safely unwrap transformed positions
                         guard let foreArmPos1 = foreArmWorldPos1,
                               let foreArmPos2 = foreArmWorldPos2,
