@@ -76,7 +76,7 @@ class DataModel: ObservableObject {
 
         let movementThreshold: Float = 0.05
 
-        let timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+        Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
             let point1 = self.dataValue
             let movementDifference = abs(point1 - self.lastYPos)
 
